@@ -45,4 +45,3 @@ class CommandList extends StatelessWidget {
         .join(' ');
   }
 }
-

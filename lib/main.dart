@@ -75,16 +75,15 @@ class _MagicControllerPageState extends State<MagicControllerPage>
       duration: AnimationConstants.counterAnimationDuration,
       vsync: this,
     );
-    _scaleAnimation =
-        Tween<double>(
-          begin: AnimationConstants.scaleAnimationBegin,
-          end: AnimationConstants.scaleAnimationEnd,
-        ).animate(
-          CurvedAnimation(
-            parent: _animationController,
-            curve: Curves.easeInOut,
-          ),
-        );
+    _scaleAnimation = Tween<double>(
+      begin: AnimationConstants.scaleAnimationBegin,
+      end: AnimationConstants.scaleAnimationEnd,
+    ).animate(
+      CurvedAnimation(
+        parent: _animationController,
+        curve: Curves.easeInOut,
+      ),
+    );
   }
 
   /// Обробляє введення команди

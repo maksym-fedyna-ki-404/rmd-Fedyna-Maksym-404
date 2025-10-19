@@ -95,4 +95,3 @@ class TextConstants {
   static const String numberCommandTitle = 'Число (наприклад, 42)';
   static const String numberCommandDescription = 'Додає число до лічильника';
 }
-

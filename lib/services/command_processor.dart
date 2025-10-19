@@ -106,8 +106,7 @@ class CommandProcessor {
       case MagicCommand.protego:
         return CommandResult(
           newCounterValue: currentCounter,
-          message:
-              '${command.emoji} Лічильник захищено! '
+          message: '${command.emoji} Лічильник захищено! '
               'Поточне значення: $currentCounter',
           messageColor: Colors.green,
         );
@@ -143,4 +142,3 @@ class CommandProcessor {
     );
   }
 }
-

@@ -36,4 +36,3 @@ class StatusMessage extends StatelessWidget {
     );
   }
 }
-

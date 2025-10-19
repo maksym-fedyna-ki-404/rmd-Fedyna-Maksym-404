@@ -67,4 +67,3 @@ class CommandInput extends StatelessWidget {
     );
   }
 }
-
