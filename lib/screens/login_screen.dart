@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../widgets/widgets.dart';
+import '../services/services.dart';
+import '../providers/providers.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -12,7 +15,6 @@ class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -21,22 +23,28 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  void _handleLogin() async {
+  Future<void> _handleLogin() async {
     if (_formKey.currentState!.validate()) {
-      setState(() {
-        _isLoading = true;
-      });
-
-      // Тут буде логіка логіну через Supabase
-      await Future.delayed(const Duration(seconds: 2));
-
-      setState(() {
-        _isLoading = false;
-      });
-
-      // Навігація до головної сторінки
-      if (mounted) {
-        Navigator.pushReplacementNamed(context, '/main');
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      
+      try {
+        await authProvider.login(
+          email: _emailController.text.trim(),
+          password: _passwordController.text,
+        );
+        
+        if (mounted) {
+          Navigator.pushReplacementNamed(context, '/main');
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(e.toString().replaceFirst('Exception: ', '')),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
       }
     }
   }
@@ -47,7 +55,7 @@ class _LoginScreenState extends State<LoginScreen> {
       backgroundColor: Colors.white,
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.fromLTRB(24, 32, 24, 24), // Додатковий відступ зверху
           child: Form(
             key: _formKey,
             child: Column(
@@ -78,15 +86,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   hint: 'Введіть ваш email',
                   controller: _emailController,
                   keyboardType: TextInputType.emailAddress,
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Будь ласка, введіть email';
-                    }
-                    if (!value.contains('@')) {
-                      return 'Введіть коректний email';
-                    }
-                    return null;
-                  },
+                  validator: ValidationService.validateEmail,
                 ),
                 const SizedBox(height: 24),
                 CustomTextField(
@@ -94,21 +94,17 @@ class _LoginScreenState extends State<LoginScreen> {
                   hint: 'Введіть ваш пароль',
                   controller: _passwordController,
                   obscureText: true,
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Будь ласка, введіть пароль';
-                    }
-                    if (value.length < 6) {
-                      return 'Пароль повинен містити мінімум 6 символів';
-                    }
-                    return null;
-                  },
+                  validator: ValidationService.validatePassword,
                 ),
                 const SizedBox(height: 32),
-                CustomButton(
-                  text: 'Увійти',
-                  onPressed: _handleLogin,
-                  isLoading: _isLoading,
+                Consumer<AuthProvider>(
+                  builder: (context, authProvider, child) {
+                    return CustomButton(
+                      text: 'Увійти',
+                      onPressed: authProvider.isLoading ? null : _handleLogin,
+                      isLoading: authProvider.isLoading,
+                    );
+                  },
                 ),
                 const SizedBox(height: 24),
                 Row(

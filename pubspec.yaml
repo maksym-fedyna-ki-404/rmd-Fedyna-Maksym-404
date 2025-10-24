@@ -38,11 +38,17 @@ dependencies:
   # Supabase для роботи з базою даних
   supabase_flutter: ^2.5.6
   
+  # Додаткові залежності для Supabase
+  crypto: ^3.0.3
+  
+  # Для роботи з .env файлами
+  flutter_dotenv: ^5.1.0
+  
   # Навігація
   go_router: ^14.2.7
   
-  # Карти (тимчасово відключено через проблеми з iOS)
-  # google_maps_flutter: ^2.6.1
+  # Карти
+  google_maps_flutter: ^2.6.1
   
   # HTTP запити
   http: ^1.2.2
@@ -53,7 +59,7 @@ dependencies:
   # Локальне сховище
   shared_preferences: ^2.2.2
   
-  # Управління станом
+  # State management
   provider: ^6.1.1
 
 dev_dependencies:
@@ -77,6 +83,10 @@ flutter:
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
+
+  # Assets для .env файлів
+  assets:
+    - .env
 
   # To add assets to your application, add an assets section, like this:
   # assets:

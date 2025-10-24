@@ -1,7 +1,31 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'screens/screens.dart';
+import 'services/services.dart';
+import 'providers/providers.dart';
+import 'config/supabase_config.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  // Приховуємо debug повідомлення про overflow
+  ErrorWidget.builder = (FlutterErrorDetails errorDetails) {
+    return Container(
+      color: Colors.transparent,
+      child: const SizedBox.shrink(),
+    );
+  };
+  
+  // Завантажуємо .env файл
+  await SupabaseConfig.load();
+  
+  // Ініціалізуємо Supabase з змінними з .env
+  await Supabase.initialize(
+    url: SupabaseConfig.supabaseUrl,
+    anonKey: SupabaseConfig.supabaseAnonKey,
+  );
+  
   runApp(const VolunteerEventApp());
 }
 
@@ -10,23 +34,41 @@ class VolunteerEventApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Волонтерські івенти Львова',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF2196F3),
-          brightness: Brightness.light,
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(
+          create: (_) => AuthProvider(
+            AuthService(SupabaseUserRepository(Supabase.instance.client)),
+          ),
         ),
-        useMaterial3: true,
-        fontFamily: 'Roboto',
+      ],
+      child: MaterialApp(
+        title: 'Волонтерські івенти Львова',
+        theme: ThemeData(
+          colorScheme: ColorScheme.fromSeed(
+            seedColor: const Color(0xFF2E7D32), // Основний зелений
+            brightness: Brightness.light,
+          ),
+          useMaterial3: true,
+          fontFamily: 'Roboto',
+          // Брендові кольори
+          primaryColor: const Color(0xFF2E7D32), // Зелений
+          secondaryHeaderColor: const Color(0xFFFF7043), // Помаранчевий
+          focusColor: const Color(0xFF42A5F5), // Синій
+        ),
+        initialRoute: '/login',
+        routes: {
+          '/login': (context) => const LoginScreen(),
+          '/register': (context) => const RegisterScreen(),
+          '/main': (context) => const MainScreen(),
+          '/notifications': (context) => const NotificationsScreen(),
+          '/settings': (context) => const SettingsScreen(),
+          '/profile-edit': (context) => const ProfileEditScreen(),
+          '/privacy': (context) => const PrivacyScreen(),
+          '/help': (context) => const HelpScreen(),
+        },
+        debugShowCheckedModeBanner: false,
       ),
-      initialRoute: '/login',
-      routes: {
-        '/login': (context) => const LoginScreen(),
-        '/register': (context) => const RegisterScreen(),
-        '/main': (context) => const MainScreen(),
-      },
-      debugShowCheckedModeBanner: false,
     );
   }
 }

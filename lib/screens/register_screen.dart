@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../widgets/widgets.dart';
+import '../services/services.dart';
+import '../providers/providers.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -14,7 +17,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
-  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -25,22 +27,29 @@ class _RegisterScreenState extends State<RegisterScreen> {
     super.dispose();
   }
 
-  void _handleRegister() async {
+  Future<void> _handleRegister() async {
     if (_formKey.currentState!.validate()) {
-      setState(() {
-        _isLoading = true;
-      });
-
-      // Тут буде логіка реєстрації через Supabase
-      await Future.delayed(const Duration(seconds: 2));
-
-      setState(() {
-        _isLoading = false;
-      });
-
-      // Навігація до головної сторінки
-      if (mounted) {
-        Navigator.pushReplacementNamed(context, '/main');
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      
+      try {
+        await authProvider.register(
+          name: _nameController.text.trim(),
+          email: _emailController.text.trim(),
+          password: _passwordController.text,
+        );
+        
+        if (mounted) {
+          Navigator.pushReplacementNamed(context, '/main');
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(e.toString().replaceFirst('Exception: ', '')),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
       }
     }
   }
@@ -59,7 +68,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       ),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.fromLTRB(24, 32, 24, 24), // Додатковий відступ зверху
           child: Form(
             key: _formKey,
             child: Column(
@@ -88,12 +97,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   label: 'Ім\'я',
                   hint: 'Введіть ваше ім\'я',
                   controller: _nameController,
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Будь ласка, введіть ім\'я';
-                    }
-                    return null;
-                  },
+                  validator: ValidationService.validateName,
                 ),
                 const SizedBox(height: 24),
                 CustomTextField(
@@ -101,15 +105,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   hint: 'Введіть ваш email',
                   controller: _emailController,
                   keyboardType: TextInputType.emailAddress,
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Будь ласка, введіть email';
-                    }
-                    if (!value.contains('@')) {
-                      return 'Введіть коректний email';
-                    }
-                    return null;
-                  },
+                  validator: ValidationService.validateEmail,
                 ),
                 const SizedBox(height: 24),
                 CustomTextField(
@@ -117,15 +113,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   hint: 'Введіть пароль',
                   controller: _passwordController,
                   obscureText: true,
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Будь ласка, введіть пароль';
-                    }
-                    if (value.length < 6) {
-                      return 'Пароль повинен містити мінімум 6 символів';
-                    }
-                    return null;
-                  },
+                  validator: ValidationService.validatePassword,
                 ),
                 const SizedBox(height: 24),
                 CustomTextField(
@@ -133,21 +121,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   hint: 'Введіть пароль ще раз',
                   controller: _confirmPasswordController,
                   obscureText: true,
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Будь ласка, підтвердіть пароль';
-                    }
-                    if (value != _passwordController.text) {
-                      return 'Паролі не співпадають';
-                    }
-                    return null;
-                  },
+                  validator: (value) => ValidationService.validateConfirmPassword(
+                    value,
+                    _passwordController.text,
+                  ),
                 ),
                 const SizedBox(height: 32),
-                CustomButton(
-                  text: 'Зареєструватися',
-                  onPressed: _handleRegister,
-                  isLoading: _isLoading,
+                Consumer<AuthProvider>(
+                  builder: (context, authProvider, child) {
+                    return CustomButton(
+                      text: 'Зареєструватися',
+                      onPressed: authProvider.isLoading ? null : _handleRegister,
+                      isLoading: authProvider.isLoading,
+                    );
+                  },
                 ),
                 const SizedBox(height: 24),
                 Row(

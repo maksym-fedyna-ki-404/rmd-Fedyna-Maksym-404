@@ -45,5 +45,10 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<!-- Дозволи для локації -->
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Додаток використовує локацію для показу близьких волонтерських івентів на карті</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Додаток використовує локацію для показу близьких волонтерських івентів на карті</string>
 </dict>
 </plist>
