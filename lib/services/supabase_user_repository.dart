@@ -55,6 +55,78 @@ class SupabaseUserRepository implements UserRepository {
     }
   }
 
+  Future<void> updateProfile({
+    required String userId,
+    String? name,
+    String? bio,
+    String? city,
+    String? phone,
+    List<String>? interests,
+    String? avatarUrl,
+  }) async {
+    try {
+      final Map<String, dynamic> updates = {};
+      if (name != null) updates['name'] = name;
+      if (bio != null) updates['bio'] = bio;
+      if (city != null) updates['city'] = city;
+      if (phone != null) updates['phone'] = phone;
+      if (interests != null) updates['interests'] = interests;
+      if (avatarUrl != null) updates['avatar_url'] = avatarUrl;
+      
+      print('🔍 Перевіряємо профіль для userId: $userId');
+      // 1) Чи існує профіль?
+      final existing = await _supabase
+          .from('profiles')
+          .select('id')
+          .eq('id', userId)
+          .maybeSingle();
+
+      print('📊 Існуючий профіль: $existing');
+      
+      Map<String, dynamic>? res;
+      if (existing == null) {
+        // 2) Вставка
+        print('➕ Вставка нового профілю з даними: $updates');
+        res = await _supabase
+            .from('profiles')
+            .insert({'id': userId, ...updates})
+            .select()
+            .maybeSingle();
+      } else {
+        // 3) Оновлення
+        print('✏️ Оновлення профілю з даними: $updates');
+        res = await _supabase
+            .from('profiles')
+            .update(updates)
+            .eq('id', userId)
+            .select()
+            .maybeSingle();
+      }
+
+      print('✅ Результат збереження: $res');
+
+      if (res == null) {
+        throw Exception('Не вдалося зберегти профіль (порожня відповідь)');
+      }
+    } catch (e) {
+      print('❌ Помилка: $e');
+      throw Exception('Помилка оновлення профілю: $e');
+    }
+  }
+
+  Future<Map<String, dynamic>?> getProfile(String userId) async {
+    try {
+      final res = await _supabase
+          .from('profiles')
+          .select()
+          .eq('id', userId)
+          .maybeSingle();
+      return res;
+    } catch (e) {
+      return null;
+    }
+  }
+
   @override
   Future<void> deleteUser(String id) async {
     try {
@@ -119,6 +191,16 @@ class SupabaseUserRepository implements UserRepository {
         } catch (updateError) {
           // Не критична помилка, продовжуємо
           print('Попередження: не вдалося оновити metadata: $updateError');
+        }
+
+        // Автоматично створюємо профіль в public.profiles
+        try {
+          await _supabase.from('profiles').insert({
+            'id': response.user!.id,
+            'name': name,
+          });
+        } catch (profileError) {
+          print('Попередження: не вдалося створити профіль: $profileError');
         }
       }
 

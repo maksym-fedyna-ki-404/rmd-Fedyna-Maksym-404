@@ -45,6 +45,11 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<!-- Дозволи для галереї/камери -->
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Додаток потребує доступу до вашої галереї для вибору аватару</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Додаток потребує доступу до камери для фотографування аватару</string>
 	<!-- Дозволи для локації -->
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Додаток використовує локацію для показу близьких волонтерських івентів на карті</string>

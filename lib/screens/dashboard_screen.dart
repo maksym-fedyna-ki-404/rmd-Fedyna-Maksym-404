@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:provider/provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/user_stats.dart';
+import '../services/events_repository.dart';
+import 'event_detail_screen.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
@@ -12,19 +16,7 @@ class DashboardScreen extends StatelessWidget {
     const Color secondary = Color(0xFFFF7043);
     const Color accent = Color(0xFF42A5F5);
     
-    // Мокові дані статистики
-    final userStats = UserStats(
-      totalEventsAttended: 7,
-      totalHoursVolunteered: 24,
-      currentStreak: 3,
-      longestStreak: 5,
-      categories: const ['Екологія', 'Допомога тваринам', 'Освіта'],
-      joinDate: DateTime.now().subtract(const Duration(days: 240)), // 8 місяців тому
-    );
-    
-    final currentLevel = userStats.currentLevel;
-    final progressPercentage = userStats.progressPercentage;
-    final progressToNext = userStats.progressToNextLevel;
+    final userId = Supabase.instance.client.auth.currentUser?.id ?? '';
 
     return Scaffold(
       backgroundColor: const Color(0xFFFAFAFA),
@@ -76,69 +68,82 @@ class DashboardScreen extends StatelessWidget {
             const SizedBox(height: 24),
             
             // Рівень користувача
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: primary.withOpacity(0.1),
-                    spreadRadius: 1,
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(
-                        FontAwesomeIcons.trophy,
-                        color: secondary,
-                        size: 24,
+            FutureBuilder<UserStats>(
+              future: Provider.of<EventsRepository>(context, listen: false).fetchUserStats(userId),
+              builder: (context, snapshot) {
+                if (!snapshot.hasData) {
+                  return const SizedBox(height: 0);
+                }
+                final userStats = snapshot.data!;
+                final currentLevel = userStats.currentLevel;
+                final progressPercentage = userStats.progressPercentage;
+                final progressToNext = userStats.progressToNextLevel;
+                
+                return Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: primary.withOpacity(0.1),
+                        spreadRadius: 1,
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          'Твій рівень: ${currentLevel.name}',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: primary,
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            FontAwesomeIcons.trophy,
+                            color: secondary,
+                            size: 24,
                           ),
-                          overflow: TextOverflow.ellipsis,
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              'Твій рівень: ${currentLevel.name} ${currentLevel.emoji}',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: primary,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Прогрес до наступного рівня',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      LinearProgressIndicator(
+                        value: progressPercentage,
+                        backgroundColor: Colors.grey[300],
+                        valueColor: AlwaysStoppedAnimation<Color>(secondary),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        '$progressToNext івентів до наступного рівня',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey[500],
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Прогрес до наступного рівня',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey[600],
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  LinearProgressIndicator(
-                    value: progressPercentage,
-                    backgroundColor: Colors.grey[300],
-                    valueColor: AlwaysStoppedAnimation<Color>(secondary),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    '$progressToNext івентів до наступного рівня',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey[500],
-                    ),
-                  ),
-                ],
-              ),
+                );
+              },
             ),
             
             const SizedBox(height: 24),
@@ -153,55 +158,66 @@ class DashboardScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 16),
-            
-            Row(
-              children: [
-                Expanded(
-                  child: _buildStatCard(
-                    icon: FontAwesomeIcons.calendarCheck,
-                    title: 'Івентів',
-                    value: '${userStats.totalEventsAttended}',
-                    subtitle: 'Відвідано',
-                    color: accent,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _buildStatCard(
-                    icon: FontAwesomeIcons.clock,
-                    title: 'Годин',
-                    value: '${userStats.totalHoursVolunteered}',
-                    subtitle: 'Волонтерства',
-                    color: secondary,
-                  ),
-                ),
-              ],
+            FutureBuilder<UserStats>(
+              future: Provider.of<EventsRepository>(context, listen: false).fetchUserStats(userId),
+              builder: (context, snapshot) {
+                final stats = snapshot.data;
+                return Row(
+                  children: [
+                    Expanded(
+                      child: _buildStatCard(
+                        icon: FontAwesomeIcons.calendarCheck,
+                        title: 'Івентів',
+                        value: stats != null ? '${stats.totalEventsAttended}' : '—',
+                        subtitle: 'Відвідано',
+                        color: accent,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _buildStatCard(
+                        icon: FontAwesomeIcons.clock,
+                        title: 'Годин',
+                        value: stats != null ? '${stats.totalHoursVolunteered}' : '—',
+                        subtitle: 'Волонтерства',
+                        color: secondary,
+                      ),
+                    ),
+                  ],
+                );
+              },
             ),
             
             const SizedBox(height: 12),
             
-            Row(
-              children: [
-                Expanded(
-                  child: _buildStatCard(
-                    icon: FontAwesomeIcons.fire,
-                    title: 'Серія',
-                    value: '${userStats.currentStreak}',
-                    subtitle: 'Днів поспіль',
-                    color: Colors.orange,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _buildStatCard(
-                    icon: FontAwesomeIcons.calendar,
-                    title: 'З нами',
-                        value: '${DateTime.now().difference(userStats.joinDate).inDays ~/ 30}',
-                    subtitle: 'Місяців',
-                    color: Colors.purple,
-                  ),
-                ),
-              ],
+            FutureBuilder<UserStats>(
+              future: Provider.of<EventsRepository>(context, listen: false).fetchUserStats(userId),
+              builder: (context, snapshot) {
+                final stats = snapshot.data;
+                return Row(
+                  children: [
+                    Expanded(
+                      child: _buildStatCard(
+                        icon: FontAwesomeIcons.fire,
+                        title: 'Серія',
+                        value: stats != null ? '${stats.currentStreak}' : '—',
+                        subtitle: 'Днів поспіль',
+                        color: Colors.orange,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _buildStatCard(
+                        icon: FontAwesomeIcons.calendar,
+                        title: 'З нами',
+                        value: stats != null ? '${DateTime.now().difference(stats.joinDate).inDays ~/ 30}' : '—',
+                        subtitle: 'Місяців',
+                        color: Colors.purple,
+                      ),
+                    ),
+                  ],
+                );
+              },
             ),
             
             const SizedBox(height: 24),
@@ -217,31 +233,38 @@ class DashboardScreen extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: userStats.categories.map((category) {
-                return Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 8,
-                  ),
-                  decoration: BoxDecoration(
-                    color: accent.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: accent.withOpacity(0.3),
-                    ),
-                  ),
-                  child: Text(
-                    category,
-                    style: TextStyle(
-                      color: accent,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
+            FutureBuilder<UserStats>(
+              future: Provider.of<EventsRepository>(context, listen: false).fetchUserStats(userId),
+              builder: (context, snapshot) {
+                final stats = snapshot.data;
+                final cats = stats?.categories ?? const <String>[];
+                return Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: cats.map((category) {
+                    return Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: accent.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: accent.withOpacity(0.3),
+                        ),
+                      ),
+                      child: Text(
+                        category,
+                        style: TextStyle(
+                          color: accent,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    );
+                  }).toList(),
                 );
-              }).toList(),
+              },
             ),
             
             const SizedBox(height: 24),
@@ -278,18 +301,7 @@ class DashboardScreen extends StatelessWidget {
                     subtitle: 'Майбутні події',
                     color: secondary,
                     onTap: () {
-                      // Показуємо повідомлення з інструкцією
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: const Text('Перейдіть на вкладку "Мої події" внизу екрану'),
-                          backgroundColor: secondary,
-                          action: SnackBarAction(
-                            label: 'Зрозуміло',
-                            textColor: Colors.white,
-                            onPressed: () {},
-                          ),
-                        ),
-                      );
+                      _showMyEventsBottomSheet(context);
                     },
                   ),
                 ),
@@ -426,6 +438,90 @@ class DashboardScreen extends StatelessWidget {
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  void _showMyEventsBottomSheet(BuildContext context) async {
+    const Color primary = Color(0xFF2E7D32);
+    const Color secondary = Color(0xFFFF7043);
+    const Color accent = Color(0xFF42A5F5);
+    
+    final userId = Supabase.instance.client.auth.currentUser?.id ?? '';
+    final repo = Provider.of<EventsRepository>(context, listen: false);
+    final events = await repo.fetchUserUpcoming(userId);
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        height: MediaQuery.of(context).size.height * 0.7,
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(20),
+              child: Row(
+                children: [
+                  Icon(FontAwesomeIcons.calendarCheck, color: secondary, size: 24),
+                  const SizedBox(width: 12),
+                  Text(
+                    'Мої події',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: primary),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: events.isEmpty
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(FontAwesomeIcons.calendarXmark, size: 64, color: Colors.grey[400]),
+                          const SizedBox(height: 16),
+                          Text('Немає зареєстрованих подій', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.grey[600])),
+                        ],
+                      ),
+                    )
+                  : ListView.builder(
+                      padding: const EdgeInsets.all(16),
+                      itemCount: events.length,
+                      itemBuilder: (context, index) {
+                        final event = events[index];
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: [BoxShadow(color: Colors.grey.withOpacity(0.1), spreadRadius: 1, blurRadius: 4, offset: const Offset(0, 2))],
+                          ),
+                          child: ListTile(
+                            leading: Icon(FontAwesomeIcons.calendarCheck, color: secondary, size: 20),
+                            title: Text(event.title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                            subtitle: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                              Text(event.location, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                              Text('${event.startDate.day}.${event.startDate.month}.${event.startDate.year}', style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+                            ]),
+                            trailing: IconButton(icon: Icon(FontAwesomeIcons.arrowRight, color: accent, size: 16), onPressed: () {
+                              Navigator.pop(context);
+                              Navigator.push(context, MaterialPageRoute(builder: (_) => EventDetailScreen(event: event)));
+                            }),
+                            onTap: () {
+                              Navigator.pop(context);
+                              Navigator.push(context, MaterialPageRoute(builder: (_) => EventDetailScreen(event: event)));
+                            },
+                          ),
+                        );
+                      },
+                    ),
+            ),
+          ],
         ),
       ),
     );

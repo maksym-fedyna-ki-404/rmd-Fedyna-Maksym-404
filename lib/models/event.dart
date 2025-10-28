@@ -1,5 +1,3 @@
-import 'package:flutter/material.dart';
-
 /// Статуси івентів
 enum EventStatus {
   upcoming('Майбутній'),

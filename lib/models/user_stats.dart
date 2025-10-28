@@ -1,5 +1,3 @@
-import 'package:flutter/material.dart';
-
 /// Рівні рейтингової системи
 enum UserLevel {
   beginner('Новачок', 0, 5, '🌱'),
@@ -46,6 +44,11 @@ class UserStats {
   final int longestStreak;
   final List<String> categories;
   final DateTime joinDate;
+  // Поля з бекенду (необов'язкові)
+  final String? backendLevelName;
+  final String? backendLevelEmoji;
+  final int? backendProgressToNext;
+  final double? backendProgressPercentage;
   
   const UserStats({
     required this.totalEventsAttended,
@@ -54,11 +57,20 @@ class UserStats {
     required this.longestStreak,
     required this.categories,
     required this.joinDate,
+    this.backendLevelName,
+    this.backendLevelEmoji,
+    this.backendProgressToNext,
+    this.backendProgressPercentage,
   });
   
   UserLevel get currentLevel => UserLevel.getLevelByEvents(totalEventsAttended);
   
-  int get progressToNextLevel => currentLevel.getProgressToNextLevel(totalEventsAttended);
+  // Віддаємо значення з бекенду, якщо доступні
+  int get progressToNextLevel => backendProgressToNext ?? currentLevel.getProgressToNextLevel(totalEventsAttended);
   
-  double get progressPercentage => currentLevel.getProgressPercentage(totalEventsAttended);
+  double get progressPercentage => backendProgressPercentage ?? currentLevel.getProgressPercentage(totalEventsAttended);
+
+  String get levelName => backendLevelName ?? currentLevel.name;
+
+  String get levelEmoji => backendLevelEmoji ?? currentLevel.emoji;
 }

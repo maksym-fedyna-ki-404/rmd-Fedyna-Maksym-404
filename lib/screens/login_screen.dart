@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../services/connectivity_service.dart';
 import '../widgets/widgets.dart';
 import '../services/services.dart';
 import '../providers/providers.dart';
@@ -26,6 +27,15 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _handleLogin() async {
     if (_formKey.currentState!.validate()) {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final connectivity = Provider.of<ConnectivityService>(context, listen: false);
+      if (!connectivity.isOnline) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Відсутнє підключення до інтернету')),
+          );
+        }
+        return;
+      }
       
       try {
         await authProvider.login(

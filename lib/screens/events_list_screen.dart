@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:provider/provider.dart';
 import '../widgets/widgets.dart';
 import '../models/event.dart';
+import '../services/events_repository.dart';
 import 'event_detail_screen.dart';
 
 class EventsListScreen extends StatefulWidget {
@@ -15,122 +18,10 @@ class _EventsListScreenState extends State<EventsListScreen> {
   // Брендові кольори
   static const Color primary = Color(0xFF2E7D32);
   
-  // Список лайкнутих івентів
-  final Set<String> likedEvents = {'Прибирання парку Шевченка', 'Допомога притулку для тварин'};
-
-  // Повні мокові дані івентів
-  final List<Event> events = [
-    Event(
-      id: '1',
-      title: 'Прибирання парку Шевченка',
-      description: 'Допоможемо прибрати парк та зробити його чистішим для всіх львів\'ян. Ми збираємося очистити алеї від сміття, прибрати листя та підготувати парк до зимового сезону.',
-      startDate: DateTime(2024, 12, 15, 10, 0),
-      endDate: DateTime(2024, 12, 15, 14, 0),
-      location: 'Парк ім. Т.Г. Шевченка, Львів',
-      category: 'Екологія',
-      maxParticipants: 30,
-      currentParticipants: 18,
-      status: EventStatus.upcoming,
-      requirements: [
-        'Зручний одяг та взуття',
-        'Робочі рукавички',
-        'Бажання допомагати',
-        'Вік від 16 років'
-      ],
-      organizer: 'Екологічна організація "Зелений Львів"',
-      contactInfo: '+380 50 123 45 67',
-      latitude: 49.8397,
-      longitude: 24.0297,
-    ),
-    Event(
-      id: '2',
-      title: 'Допомога притулку для тварин',
-      description: 'Потрібна допомога з годуванням та доглядом за безпритульними тваринами. Ми шукаємо волонтерів для допомоги з вигулом собак, годуванням котів та прибиранням території притулку.',
-      startDate: DateTime(2024, 12, 18, 14, 0),
-      endDate: DateTime(2024, 12, 18, 18, 0),
-      location: 'Притулок "Друзі тварин", Львів',
-      category: 'Тварини',
-      maxParticipants: 20,
-      currentParticipants: 12,
-      status: EventStatus.upcoming,
-      requirements: [
-        'Любов до тварин',
-        'Терпіння',
-        'Зручний одяг',
-        'Досвід роботи з тваринами (бажано)'
-      ],
-      organizer: 'Притулок "Друзі тварин"',
-      contactInfo: '+380 67 234 56 78',
-      latitude: 49.8500,
-      longitude: 24.0100,
-    ),
-    Event(
-      id: '3',
-      title: 'Роздача їжі бездомним',
-      description: 'Допоможемо роздати гарячу їжу тим, хто цього найбільше потребує. Ми готуємо гарячі обіди та роздаємо їх бездомним людям у центрі міста.',
-      startDate: DateTime(2024, 12, 20, 12, 0),
-      endDate: DateTime(2024, 12, 20, 16, 0),
-      location: 'Центр міста, Львів',
-      category: 'Соціальна допомога',
-      maxParticipants: 15,
-      currentParticipants: 15,
-      status: EventStatus.completed,
-      requirements: [
-        'Доброзичливість',
-        'Терпіння',
-        'Зручний одяг',
-        'Вік від 18 років'
-      ],
-      organizer: 'Благодійний фонд "Допомога ближньому"',
-      contactInfo: '+380 63 345 67 89',
-      latitude: 49.8426,
-      longitude: 24.0322,
-    ),
-    Event(
-      id: '4',
-      title: 'Навчання дітей англійської',
-      description: 'Допоможемо дітям з вивченням англійської мови у неформальній атмосфері. Ми проводимо інтерактивні заняття з англійської мови для дітей віком 8-12 років.',
-      startDate: DateTime(2024, 12, 22, 16, 0),
-      endDate: DateTime(2024, 12, 22, 18, 0),
-      location: 'Бібліотека ім. Франка, Львів',
-      category: 'Освіта',
-      maxParticipants: 25,
-      currentParticipants: 8,
-      status: EventStatus.upcoming,
-      requirements: [
-        'Знання англійської мови (рівень B1+)',
-        'Досвід роботи з дітьми',
-        'Терпіння та креативність',
-        'Вік від 20 років'
-      ],
-      organizer: 'Освітній центр "Майбутнє"',
-      contactInfo: '+380 96 456 78 90',
-      latitude: 49.8300,
-      longitude: 24.0200,
-    ),
-    Event(
-      id: '5',
-      title: 'Медична допомога літнім людям',
-      description: 'Допоможемо літнім людям з медичними обстеженнями та консультаціями. Ми надаємо безкоштовні медичні консультації та базові обстеження.',
-      startDate: DateTime(2024, 12, 25, 9, 0),
-      endDate: DateTime(2024, 12, 25, 15, 0),
-      location: 'Поліклініка №3, Львів',
-      category: 'Медицина',
-      maxParticipants: 40,
-      currentParticipants: 22,
-      status: EventStatus.upcoming,
-      requirements: [
-        'Медична освіта або досвід',
-        'Доброзичливість',
-        'Професійний одяг',
-        'Вік від 25 років'
-      ],
-      organizer: 'Медичний центр "Здоров\'я"',
-      contactInfo: '+380 50 567 89 01',
-      latitude: 49.8600,
-      longitude: 24.0400,
-    ),
-  ];
+  // Список лайкнутих івентів (ID)
+  Set<String> likedEvents = {};
+  
+  List<Event> events = const [];
 
   @override
   Widget build(BuildContext context) {
@@ -185,20 +76,34 @@ class _EventsListScreenState extends State<EventsListScreen> {
             
             // Контент
             Expanded(
-              child: ListView.builder(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                itemCount: events.length,
-                itemBuilder: (context, index) {
-                  final event = events[index];
-                  return EventCard(
-                    title: event.title,
-                    description: event.description,
-                    date: _formatDate(event.startDate),
-                    location: event.location,
-                    isLiked: likedEvents.contains(event.title),
-                    isCompleted: event.isCompleted,
-                    onTap: () => _navigateToEventDetail(event),
-                    onLikeToggle: () => _toggleLike(event.title),
+              child: FutureBuilder<List<Event>>(
+                future: _loadData(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState != ConnectionState.done) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  if (snapshot.hasError) {
+                    return Center(child: Text('Помилка: ${snapshot.error}'));
+                  }
+                  if (events.isEmpty) {
+                    return Center(child: Text('Немає івентів'));
+                  }
+                  return ListView.builder(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    itemCount: events.length,
+                    itemBuilder: (context, index) {
+                      final event = events[index];
+                      return EventCard(
+                        title: event.title,
+                        description: event.description,
+                        date: _formatDate(event.startDate),
+                        location: event.location,
+                        isLiked: likedEvents.contains(event.id),
+                        isCompleted: event.isCompleted,
+                        onTap: () => _navigateToEventDetail(event),
+                        onLikeToggle: () => _toggleLike(event.id),
+                      );
+                    },
                   );
                 },
               ),
@@ -209,6 +114,21 @@ class _EventsListScreenState extends State<EventsListScreen> {
     );
   }
 
+  Future<List<Event>> _loadData() async {
+    final repo = Provider.of<EventsRepository>(context, listen: false);
+    final userId = Supabase.instance.client.auth.currentUser?.id;
+    
+    // Завантажуємо івенти (без completed)
+    events = await repo.fetchEvents(excludeCompleted: true);
+    
+    // Завантажуємо лайки
+    if (userId != null) {
+      likedEvents = await repo.fetchFavorites(userId);
+    }
+    
+    return events;
+  }
+
   String _formatDate(DateTime date) {
     final months = [
       'січня', 'лютого', 'березня', 'квітня', 'травня', 'червня',
@@ -217,23 +137,38 @@ class _EventsListScreenState extends State<EventsListScreen> {
     return '${date.day} ${months[date.month - 1]}, ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
   }
 
-  void _navigateToEventDetail(Event event) {
-    Navigator.push(
+  void _navigateToEventDetail(Event event) async {
+    final result = await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => EventDetailScreen(event: event),
       ),
     );
+    // Оновлюємо список після повернення
+    if (mounted) {
+      setState(() {});
+    }
   }
 
-  void _toggleLike(String eventTitle) {
+  Future<void> _toggleLike(String eventId) async {
+    final repo = Provider.of<EventsRepository>(context, listen: false);
+    final userId = Supabase.instance.client.auth.currentUser?.id;
+    if (userId == null) return;
+    
+    final isLiked = likedEvents.contains(eventId);
+    final makeFav = !isLiked;
+    
+    // Оновлюємо UI
     setState(() {
-      if (likedEvents.contains(eventTitle)) {
-        likedEvents.remove(eventTitle);
+      if (makeFav) {
+        likedEvents.add(eventId);
       } else {
-        likedEvents.add(eventTitle);
+        likedEvents.remove(eventId);
       }
     });
+    
+    // Зберігаємо в Supabase
+    await repo.toggleFavorite(userId, eventId, makeFav);
   }
 
   void _showWishlistBottomSheet() {
@@ -284,8 +219,8 @@ class _EventsListScreenState extends State<EventsListScreen> {
                       padding: const EdgeInsets.all(16),
                       itemCount: likedEvents.length,
                       itemBuilder: (context, index) {
-                        final eventTitle = likedEvents.elementAt(index);
-                        final event = events.firstWhere((e) => e.title == eventTitle);
+                        final eventId = likedEvents.elementAt(index);
+                        final event = events.firstWhere((e) => e.id == eventId);
                         return Container(
                           margin: const EdgeInsets.only(bottom: 12),
                           decoration: BoxDecoration(

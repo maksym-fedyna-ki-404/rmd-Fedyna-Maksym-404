@@ -32,6 +32,11 @@ class _MainScreenState extends State<MainScreen> {
     // Ініціалізуємо AuthProvider при запуску головної сторінки
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Provider.of<AuthProvider>(context, listen: false).initialize();
+      // Перевіряємо аргументи
+      final args = ModalRoute.of(context)?.settings.arguments as Map?;
+      if (args != null && args['tab'] != null) {
+        setState(() => _currentIndex = args['tab'] as int);
+      }
     });
   }
 

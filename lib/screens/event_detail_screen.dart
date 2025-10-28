@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:provider/provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import '../services/events_repository.dart';
 import '../models/event.dart';
+import 'package:share_plus/share_plus.dart';
 
 class EventDetailScreen extends StatefulWidget {
   final Event event;
@@ -21,8 +25,16 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
   @override
   void initState() {
     super.initState();
-    // Симулюємо перевірку чи користувач вже зареєстрований
-    _isRegistered = widget.event.currentParticipants > 15;
+    _preload();
+  }
+
+  Future<void> _preload() async {
+    final repo = Provider.of<EventsRepository>(context, listen: false);
+    final userId = Supabase.instance.client.auth.currentUser?.id;
+    if (userId != null) {
+      final reg = await repo.isRegistered(userId, widget.event.id);
+      if (mounted) setState(() => _isRegistered = reg);
+    }
   }
 
   @override
@@ -461,22 +473,24 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                 ),
               ),
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: OutlinedButton.icon(
-                onPressed: _openLocation,
-                icon: const Icon(FontAwesomeIcons.mapLocationDot),
-                label: const Text('На карті'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: secondary,
-                  side: BorderSide(color: secondary),
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+            if (!widget.event.isCompleted) ...[
+              const SizedBox(width: 12),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: _openLocation,
+                  icon: const Icon(FontAwesomeIcons.mapLocationDot),
+                  label: const Text('На карті'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: secondary,
+                    side: BorderSide(color: secondary),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                 ),
               ),
-            ),
+            ],
           ],
         ),
       ],
@@ -592,17 +606,40 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
             child: const Text('Скасувати'),
           ),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(context);
-              setState(() {
-                _isRegistered = true;
-              });
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Успішно зареєстровано на ${widget.event.title}!'),
-                  backgroundColor: const Color(0xFF2E7D32),
-                ),
-              );
+              final repo = Provider.of<EventsRepository>(context, listen: false);
+              final userId = Supabase.instance.client.auth.currentUser?.id;
+              if (userId != null) {
+                try {
+                  final ok = await repo.register(userId, widget.event.id);
+                  if (!mounted) return;
+                  if (ok) {
+                    setState(() => _isRegistered = true);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Успішно зареєстровано на ${widget.event.title}!'),
+                        backgroundColor: const Color(0xFF2E7D32),
+                      ),
+                    );
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Не вдалося зареєструватися'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
+                } catch (e) {
+                  if (!mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Помилка реєстрації: $e'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              }
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF2E7D32),
@@ -627,17 +664,30 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
             child: const Text('Скасувати'),
           ),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(context);
-              setState(() {
-                _isRegistered = false;
-              });
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Реєстрацію скасовано'),
-                  backgroundColor: Colors.red,
-                ),
-              );
+              final repo = Provider.of<EventsRepository>(context, listen: false);
+              final userId = Supabase.instance.client.auth.currentUser?.id;
+              if (userId != null) {
+                final ok = await repo.unregister(userId, widget.event.id);
+                if (!mounted) return;
+                if (ok) {
+                  setState(() => _isRegistered = false);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Реєстрацію скасовано'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Не вдалося скасувати'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              }
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.red,
@@ -650,22 +700,28 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     );
   }
 
-  void _shareEvent() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Поділяємося "${widget.event.title}"'),
-        backgroundColor: const Color(0xFF42A5F5),
-      ),
-    );
+  void _shareEvent() async {
+    final uri = Uri(
+      scheme: 'https',
+      host: 'volunteer.example',
+      path: '/events/${widget.event.id}',
+    ).toString();
+    final text = '${widget.event.title}\n${widget.event.description}\n$uri';
+    try {
+      // ignore: depend_on_referenced_packages
+      await Share.share(text, subject: widget.event.title);
+    } catch (_) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Не вдалося відкрити системне меню поділу'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   void _openLocation() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Відкриваємо локацію: ${widget.event.location}'),
-        backgroundColor: const Color(0xFFFF7043),
-      ),
-    );
+    Navigator.pushNamed(context, '/main', arguments: {'tab': 3, 'eventId': widget.event.id, 'lat': widget.event.latitude, 'lng': widget.event.longitude});
   }
 
   IconData _getStatusIcon(EventStatus status) {

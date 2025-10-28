@@ -1,5 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:provider/provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:typed_data';
+import '../providers/providers.dart';
+import '../services/supabase_user_repository.dart';
 
 class ProfileEditScreen extends StatefulWidget {
   const ProfileEditScreen({super.key});
@@ -10,13 +16,48 @@ class ProfileEditScreen extends StatefulWidget {
 
 class _ProfileEditScreenState extends State<ProfileEditScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController(text: 'Олександр Петренко');
-  final _emailController = TextEditingController(text: 'oleksandr@example.com');
-  final _phoneController = TextEditingController(text: '+380 50 123 45 67');
-  final _bioController = TextEditingController(text: 'Люблю допомагати іншим та робити світ кращим!');
+  late TextEditingController _nameController;
+  late TextEditingController _emailController;
+  late TextEditingController _phoneController;
+  late TextEditingController _bioController;
   
-  String _selectedCity = 'Київ';
-  List<String> _selectedInterests = ['Екологія', 'Допомога тваринам'];
+  String _selectedCity = 'Львів';
+  List<String> _selectedInterests = [];
+  XFile? _selectedImage;
+  Uint8List? _previewBytes;
+  String? _avatarUrl;
+  
+  @override
+  void initState() {
+    super.initState();
+    final user = Provider.of<AuthProvider>(context, listen: false).currentUser;
+    _nameController = TextEditingController(text: user?.name ?? '');
+    _emailController = TextEditingController(text: user?.email ?? '');
+    _phoneController = TextEditingController(text: '+380');
+    _bioController = TextEditingController(text: '');
+    _loadUserProfile();
+  }
+  
+  Future<void> _loadUserProfile() async {
+    try {
+      final user = Provider.of<AuthProvider>(context, listen: false).currentUser;
+      if (user == null) return;
+      
+      final supabaseRepo = SupabaseUserRepository(Supabase.instance.client);
+      final profileData = await supabaseRepo.getProfile(user.id);
+      
+      if (profileData != null && mounted) {
+        setState(() {
+          _bioController.text = profileData['bio'] as String? ?? '';
+          _selectedCity = profileData['city'] as String? ?? 'Львів';
+          _selectedInterests = List<String>.from(profileData['interests'] as List? ?? []);
+          _avatarUrl = profileData['avatar_url'] as String?;
+        });
+      }
+    } catch (e) {
+      debugPrint('Помилка завантаження профілю: $e');
+    }
+  }
   
   final List<String> _cities = [
     'Київ', 'Харків', 'Одеса', 'Дніпро', 'Львів', 'Запоріжжя', 'Інше'
@@ -98,11 +139,18 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                             CircleAvatar(
                               radius: 60,
                               backgroundColor: Colors.grey[200],
-                              child: Icon(
-                                FontAwesomeIcons.user,
-                                size: 60,
-                                color: Colors.grey[600],
-                              ),
+                              backgroundImage: _previewBytes != null
+                                  ? MemoryImage(_previewBytes!)
+                                  : (_avatarUrl != null && _avatarUrl!.isNotEmpty
+                                      ? NetworkImage(_avatarUrl!) as ImageProvider
+                                      : null),
+                              child: (_previewBytes == null && (_avatarUrl == null || _avatarUrl!.isEmpty))
+                                  ? Icon(
+                                      FontAwesomeIcons.user,
+                                      size: 60,
+                                      color: Colors.grey[600],
+                                    )
+                                  : null,
                             ),
                             Positioned(
                               bottom: 0,
@@ -324,15 +372,35 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
               ListTile(
                 leading: const Icon(Icons.photo_library),
                 title: const Text('Галерея'),
-                onTap: () {
+                onTap: () async {
                   Navigator.of(context).pop();
+                  final picker = ImagePicker();
+                  final picked = await picker.pickImage(source: ImageSource.gallery);
+                  if (picked != null && mounted) {
+                    final bytes = await picked.readAsBytes();
+                    setState(() {
+                      _selectedImage = picked;
+                      _previewBytes = bytes;
+                    });
+                    await _uploadProfileImage(picked);
+                  }
                 },
               ),
               ListTile(
                 leading: const Icon(Icons.photo_camera),
                 title: const Text('Камера'),
-                onTap: () {
+                onTap: () async {
                   Navigator.of(context).pop();
+                  final picker = ImagePicker();
+                  final picked = await picker.pickImage(source: ImageSource.camera);
+                  if (picked != null && mounted) {
+                    final bytes = await picked.readAsBytes();
+                    setState(() {
+                      _selectedImage = picked;
+                      _previewBytes = bytes;
+                    });
+                    await _uploadProfileImage(picked);
+                  }
                 },
               ),
             ],
@@ -342,15 +410,98 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
     );
   }
 
-  void _saveProfile() {
-    if (_formKey.currentState!.validate()) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Профіль успішно збережено!'),
-          backgroundColor: Color(0xFF2E7D32),
-        ),
+  Future<void> _uploadProfileImage(XFile file) async {
+    try {
+      final user = Provider.of<AuthProvider>(context, listen: false).currentUser;
+      if (user == null) return;
+
+      final bytes = await file.readAsBytes();
+      final fileName = '${user.id}/avatar/${DateTime.now().millisecondsSinceEpoch}.jpg';
+      
+      await Supabase.instance.client.storage.from('avatars').uploadBinary(
+        fileName,
+        bytes,
       );
-      Navigator.pop(context);
+
+      final url = Supabase.instance.client.storage.from('avatars').getPublicUrl(fileName);
+      
+      await Supabase.instance.client
+          .from('profiles')
+          .update({'avatar_url': url})
+          .eq('id', user.id);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Фото профілю оновлено!'), backgroundColor: Color(0xFF2E7D32)),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Помилка: $e'), backgroundColor: Colors.red),
+        );
+      }
     }
+  }
+
+  Future<void> _saveProfile() async {
+    if (_formKey.currentState!.validate()) {
+      try {
+        final authProvider = Provider.of<AuthProvider>(context, listen: false);
+        final user = authProvider.currentUser;
+        if (user == null) return;
+        
+        // Оновлюємо ім'я в Auth
+        await authProvider.updateUser(
+          user.copyWith(
+            name: _nameController.text,
+            email: _emailController.text,
+          ),
+        );
+        
+        // Оновлюємо профіль в Supabase
+        final supabaseRepo = SupabaseUserRepository(Supabase.instance.client);
+        await supabaseRepo.updateProfile(
+          userId: user.id,
+          name: _nameController.text,
+          bio: _bioController.text,
+          city: _selectedCity,
+          phone: _phoneController.text,
+          interests: _selectedInterests,
+        );
+        
+        // Додаткова перевірка - читаємо назад з БД
+        final saved = await supabaseRepo.getProfile(user.id);
+        debugPrint('✅ Збережено в БД: $saved');
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Профіль успішно збережено!'),
+              backgroundColor: Color(0xFF2E7D32),
+            ),
+          );
+          Navigator.pop(context);
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Помилка збереження: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    }
+  }
+  
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _emailController.dispose();
+    _phoneController.dispose();
+    _bioController.dispose();
+    super.dispose();
   }
 }

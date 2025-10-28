@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import '../widgets/widgets.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:image_picker/image_picker.dart';
 import '../providers/providers.dart';
+import '../services/supabase_user_repository.dart';
+import '../services/events_repository.dart';
+import '../models/user_stats.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -16,6 +20,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
   static const Color primary = Color(0xFF2E7D32);
   static const Color secondary = Color(0xFFFF7043);
   static const Color accent = Color(0xFF42A5F5);
+
+  Map<String, dynamic>? _profile;
+  XFile? _selectedImage;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProfile();
+  }
+
+  Future<void> _loadProfile() async {
+    final user = Provider.of<AuthProvider>(context, listen: false).currentUser;
+    if (user == null) return;
+    final repo = SupabaseUserRepository(Supabase.instance.client);
+    final data = await repo.getProfile(user.id);
+    if (!mounted) return;
+    setState(() {
+      _profile = data ?? {};
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -85,16 +109,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             CircleAvatar(
                               radius: 60,
                               backgroundColor: accent.withOpacity(0.1),
-                              backgroundImage: user.avatarUrl != null 
-                                  ? NetworkImage(user.avatarUrl!)
-                                  : null,
-                              child: user.avatarUrl == null
-                                  ? Icon(
-                                      FontAwesomeIcons.user,
-                                      size: 40,
-                                      color: accent,
-                                    )
-                                  : null,
+                              backgroundImage: (() {
+                                final profileUrl = _profile?['avatar_url'] as String?;
+                                final authUrl = user.avatarUrl;
+                                final url = (profileUrl != null && profileUrl.isNotEmpty)
+                                    ? profileUrl
+                                    : authUrl;
+                                return (url != null && url.isNotEmpty)
+                                    ? NetworkImage(url)
+                                    : null;
+                              })(),
+                              child: (() {
+                                final hasUrl = ((_profile?['avatar_url'] as String?)?.isNotEmpty == true) ||
+                                    ((user.avatarUrl ?? '').isNotEmpty);
+                                return hasUrl
+                                    ? null
+                                    : Icon(
+                                        FontAwesomeIcons.user,
+                                        size: 40,
+                                        color: accent,
+                                      );
+                              })(),
                             ),
                             Positioned(
                               bottom: 0,
@@ -141,38 +176,84 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             color: Colors.grey[600],
                           ),
                         ),
+                        const SizedBox(height: 8),
+                        if ((_profile?['city'] as String?)?.isNotEmpty == true)
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(FontAwesomeIcons.city, size: 14, color: Colors.grey[600]),
+                              const SizedBox(width: 6),
+                              Text(
+                                _profile!['city'] as String,
+                                style: TextStyle(fontSize: 14, color: Colors.grey[700]),
+                              ),
+                            ],
+                          ),
+                        if ((_profile?['bio'] as String?)?.isNotEmpty == true) ...[
+                          const SizedBox(height: 12),
+                          Text(
+                            _profile!['bio'] as String,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(fontSize: 14, color: Colors.grey[700]),
+                          ),
+                        ],
+                        if ((_profile?['interests'] as List?)?.isNotEmpty == true) ...[
+                          const SizedBox(height: 12),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            alignment: WrapAlignment.center,
+                            children: List<String>.from(_profile!['interests'] as List)
+                                .map((i) => Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                      decoration: BoxDecoration(
+                                        color: accent.withOpacity(0.1),
+                                        borderRadius: BorderRadius.circular(16),
+                                      ),
+                                      child: Text(i, style: TextStyle(color: accent, fontSize: 12, fontWeight: FontWeight.w600)),
+                                    ))
+                                .toList(),
+                          ),
+                        ],
                         const SizedBox(height: 20),
                         
                         // Статистика
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _buildStatCard(
-                                icon: FontAwesomeIcons.calendarCheck,
-                                value: '12',
-                                label: 'Івентів',
-                                color: accent,
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: _buildStatCard(
-                                icon: FontAwesomeIcons.clock,
-                                value: '45',
-                                label: 'Годин',
-                                color: secondary,
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: _buildStatCard(
-                                icon: FontAwesomeIcons.trophy,
-                                value: '8',
-                                label: 'Місяців',
-                                color: Colors.amber,
-                              ),
-                            ),
-                          ],
+                        FutureBuilder<UserStats>(
+                          future: Provider.of<EventsRepository>(context, listen: false)
+                              .fetchUserStats(user.id),
+                          builder: (context, snapshot) {
+                            final stats = snapshot.data;
+                            return Row(
+                              children: [
+                                Expanded(
+                                  child: _buildStatCard(
+                                    icon: FontAwesomeIcons.calendarCheck,
+                                    value: stats != null ? '${stats.totalEventsAttended}' : '—',
+                                    label: 'Івентів',
+                                    color: accent,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: _buildStatCard(
+                                    icon: FontAwesomeIcons.clock,
+                                    value: stats != null ? '${stats.totalHoursVolunteered}' : '—',
+                                    label: 'Годин',
+                                    color: secondary,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: _buildStatCard(
+                                    icon: FontAwesomeIcons.trophy,
+                                    value: stats != null ? stats.currentLevel.emoji : '—',
+                                    label: stats != null ? stats.currentLevel.name : 'Рівень',
+                                    color: Colors.amber,
+                                  ),
+                                ),
+                              ],
+                            );
+                          },
                         ),
                       ],
                     ),
@@ -189,7 +270,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           subtitle: 'Змінити особисту інформацію',
                           color: primary,
                           onTap: () {
-                            Navigator.pushNamed(context, '/profile-edit');
+                            Navigator.pushNamed(context, '/profile-edit').then((_) => _loadProfile());
                           },
                         ),
                         const SizedBox(height: 12),
@@ -220,6 +301,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           color: Colors.orange,
                           onTap: () {
                             Navigator.pushNamed(context, '/help');
+                          },
+                        ),
+                        const SizedBox(height: 12),
+                        _buildMenuCard(
+                          icon: FontAwesomeIcons.thermometerHalf,
+                          title: 'MQTT Датчик',
+                          subtitle: 'Температура в реальному часі',
+                          color: Colors.red,
+                          onTap: () {
+                            Navigator.pushNamed(context, '/mqtt');
                           },
                         ),
                       ],
@@ -405,29 +496,29 @@ class _ProfileScreenState extends State<ProfileScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 _buildImageOption(
-                  icon: FontAwesomeIcons.camera,
-                  label: 'Камера',
-                  onTap: () {
+                  icon: FontAwesomeIcons.image,
+                  label: 'Галерея',
+                  onTap: () async {
                     Navigator.pop(context);
-                    // TODO: Відкрити камеру
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Функція камери буде додана пізніше'),
-                      ),
-                    );
+                    final picker = ImagePicker();
+                    final picked = await picker.pickImage(source: ImageSource.gallery);
+                    if (picked != null && mounted) {
+                      setState(() => _selectedImage = picked);
+                      await _uploadProfileImage(picked);
+                    }
                   },
                 ),
                 _buildImageOption(
-                  icon: FontAwesomeIcons.image,
-                  label: 'Галерея',
-                  onTap: () {
+                  icon: FontAwesomeIcons.camera,
+                  label: 'Камера',
+                  onTap: () async {
                     Navigator.pop(context);
-                    // TODO: Відкрити галерею
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Функція галереї буде додана пізніше'),
-                      ),
-                    );
+                    final picker = ImagePicker();
+                    final picked = await picker.pickImage(source: ImageSource.camera);
+                    if (picked != null && mounted) {
+                      setState(() => _selectedImage = picked);
+                      await _uploadProfileImage(picked);
+                    }
                   },
                 ),
               ],
@@ -444,6 +535,41 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _uploadProfileImage(XFile file) async {
+    try {
+      final user = Provider.of<AuthProvider>(context, listen: false).currentUser;
+      if (user == null) return;
+
+      final bytes = await file.readAsBytes();
+      final fileName = '${user.id}/avatar/${DateTime.now().millisecondsSinceEpoch}.jpg';
+      
+      await Supabase.instance.client.storage.from('avatars').uploadBinary(
+        fileName,
+        bytes,
+      );
+
+      final url = Supabase.instance.client.storage.from('avatars').getPublicUrl(fileName);
+      
+      await Supabase.instance.client
+          .from('profiles')
+          .update({'avatar_url': url})
+          .eq('id', user.id);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Фото профілю оновлено!'), backgroundColor: Color(0xFF2E7D32)),
+        );
+        _loadProfile();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Помилка: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
   }
 
   Widget _buildImageOption({
@@ -483,10 +609,30 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _logout() async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final Color primary = const Color(0xFF2E7D32);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Вийти з акаунту?'),
+        content: const Text('Ви дійсно бажаєте вийти?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('Скасувати', style: TextStyle(color: primary)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+            child: const Text('Вийти'),
+          ),
+        ],
+      ),
+    ) ?? false;
+
+    if (!confirmed) return;
+
     await authProvider.logout();
-    
-    if (mounted) {
-      Navigator.pushReplacementNamed(context, '/login');
-    }
+    if (!mounted) return;
+    Navigator.pushReplacementNamed(context, '/login');
   }
 }

@@ -61,6 +61,21 @@ dependencies:
   
   # State management
   provider: ^6.1.1
+  
+  # Перевірка мережі
+  connectivity_plus: ^6.0.5
+  
+  # MQTT клієнт
+  mqtt_client: ^10.2.1
+  
+  # Безпечне сховище (за потреби токени/прапори)
+  flutter_secure_storage: ^9.2.2
+
+  # Системний шеринг
+  share_plus: ^10.0.2
+  
+  # Фото з галереї
+  image_picker: ^1.1.2
 
 dev_dependencies:
   flutter_test:

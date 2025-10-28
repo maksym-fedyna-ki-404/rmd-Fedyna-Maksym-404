@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:provider/provider.dart';
+import '../services/events_repository.dart';
+import '../models/event.dart';
 
 class EventsMapScreen extends StatefulWidget {
   const EventsMapScreen({super.key});
@@ -13,7 +16,6 @@ class EventsMapScreen extends StatefulWidget {
 class _EventsMapScreenState extends State<EventsMapScreen> {
   // Брендові кольори
   static const Color primary = Color(0xFF2E7D32);
-  static const Color secondary = Color(0xFFFF7043);
   static const Color accent = Color(0xFF42A5F5);
 
   // Контролер карти
@@ -25,45 +27,7 @@ class _EventsMapScreenState extends State<EventsMapScreen> {
     zoom: 12.0,
   );
 
-  // Мокові дані для демонстрації
-  final List<Map<String, dynamic>> events = [
-    {
-      'title': 'Прибирання парку Шевченка',
-      'date': '15 грудня, 10:00',
-      'location': 'Парк ім. Т.Г. Шевченка, Львів',
-      'lat': 49.8397,
-      'lng': 24.0297,
-      'description': 'Допоможемо прибрати парк та зробити його чистішим',
-      'category': 'Екологія',
-    },
-    {
-      'title': 'Допомога притулку для тварин',
-      'date': '18 грудня, 14:00',
-      'location': 'Притулок "Друзі тварин", Львів',
-      'lat': 49.8300,
-      'lng': 24.0100,
-      'description': 'Потрібна допомога з годуванням та доглядом за тваринами',
-      'category': 'Допомога тваринам',
-    },
-    {
-      'title': 'Роздача їжі бездомним',
-      'date': '20 грудня, 12:00',
-      'location': 'Центр міста, Львів',
-      'lat': 49.8419,
-      'lng': 24.0315,
-      'description': 'Допоможемо роздати гарячу їжу тим, хто цього потребує',
-      'category': 'Соціальна допомога',
-    },
-    {
-      'title': 'Навчання дітей англійської',
-      'date': '22 грудня, 16:00',
-      'location': 'Бібліотека ім. Франка, Львів',
-      'lat': 49.8444,
-      'lng': 24.0264,
-      'description': 'Допоможемо дітям з вивченням англійської мови',
-      'category': 'Освіта',
-    },
-  ];
+  List<Event> _events = const [];
 
   // Маркери для карти
   Set<Marker> _markers = {};
@@ -71,23 +35,31 @@ class _EventsMapScreenState extends State<EventsMapScreen> {
   @override
   void initState() {
     super.initState();
-    _createMarkers();
+    _load();
   }
 
-  void _createMarkers() {
-    _markers = events.map((event) {
-      return Marker(
-        markerId: MarkerId(event['title']),
-        position: LatLng(event['lat'], event['lng']),
-        infoWindow: InfoWindow(
-          title: event['title'],
-          snippet: event['description'],
-        ),
-        icon: BitmapDescriptor.defaultMarkerWithHue(
-          _getMarkerColor(event['category']),
-        ),
-      );
-    }).toSet();
+  Future<void> _load() async {
+    final repo = Provider.of<EventsRepository>(context, listen: false);
+    final events = await repo.fetchEvents(excludeCompleted: true);
+    // Фільтруємо тільки майбутні події
+    final upcoming = events.where((e) => !e.isCompleted && e.startDate.isAfter(DateTime.now())).toList();
+    setState(() {
+      _events = upcoming;
+      _markers = upcoming
+          .where((e) => e.latitude != null && e.longitude != null)
+          .map((event) => Marker(
+                markerId: MarkerId(event.id),
+                position: LatLng(event.latitude!, event.longitude!),
+                infoWindow: InfoWindow(
+                  title: event.title,
+                  snippet: event.description,
+                ),
+                icon: BitmapDescriptor.defaultMarkerWithHue(
+                  _getMarkerColor(event.category),
+                ),
+              ))
+          .toSet();
+    });
   }
 
   double _getMarkerColor(String category) {
@@ -103,6 +75,14 @@ class _EventsMapScreenState extends State<EventsMapScreen> {
       default:
         return BitmapDescriptor.hueViolet;
     }
+  }
+
+  String _formatDate(DateTime date) {
+    final months = [
+      'січня', 'лютого', 'березня', 'квітня', 'травня', 'червня',
+      'липня', 'серпня', 'вересня', 'жовтня', 'листопада', 'грудня'
+    ];
+    return '${date.day} ${months[date.month - 1]}, ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
   }
 
   void _onMapCreated(GoogleMapController controller) {
@@ -150,9 +130,9 @@ class _EventsMapScreenState extends State<EventsMapScreen> {
             Expanded(
               child: ListView.builder(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
-                itemCount: events.length,
+                itemCount: _events.length,
                 itemBuilder: (context, index) {
-                  final event = events[index];
+                  final event = _events[index];
                   return Container(
                     margin: const EdgeInsets.only(bottom: 12),
                     decoration: BoxDecoration(
@@ -182,7 +162,7 @@ class _EventsMapScreenState extends State<EventsMapScreen> {
                         ),
                       ),
                       title: Text(
-                        event['title'],
+                        event.title,
                         style: const TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
@@ -192,14 +172,14 @@ class _EventsMapScreenState extends State<EventsMapScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            event['location'],
+                            event.location,
                             style: TextStyle(
                               fontSize: 12,
                               color: Colors.grey[600],
                             ),
                           ),
                           Text(
-                            event['date'],
+                            _formatDate(event.startDate),
                             style: TextStyle(
                               fontSize: 12,
                               color: Colors.grey[500],
@@ -208,7 +188,11 @@ class _EventsMapScreenState extends State<EventsMapScreen> {
                         ],
                       ),
                       trailing: IconButton(
-                        onPressed: () => _openInAppleMaps(event['lat'], event['lng']),
+                        onPressed: () {
+                          if (event.latitude != null && event.longitude != null) {
+                            _openInAppleMaps(event.latitude!, event.longitude!);
+                          }
+                        },
                         icon: Icon(
                           FontAwesomeIcons.locationArrow,
                           color: accent,
@@ -217,7 +201,9 @@ class _EventsMapScreenState extends State<EventsMapScreen> {
                       ),
                       onTap: () {
                         Navigator.pop(context);
-                        _goToEvent(event['lat'], event['lng']);
+                        if (event.latitude != null && event.longitude != null) {
+                          _goToEvent(event.latitude!, event.longitude!);
+                        }
                       },
                     ),
                   );

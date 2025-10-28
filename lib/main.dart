@@ -5,6 +5,11 @@ import 'screens/screens.dart';
 import 'services/services.dart';
 import 'providers/providers.dart';
 import 'config/supabase_config.dart';
+import 'services/connectivity_service.dart';
+import 'services/mqtt_service.dart';
+import 'services/events_repository.dart';
+import 'screens/splash_screen.dart';
+import 'screens/mqtt_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -41,6 +46,9 @@ class VolunteerEventApp extends StatelessWidget {
             AuthService(SupabaseUserRepository(Supabase.instance.client)),
           ),
         ),
+        ChangeNotifierProvider(create: (_) => ConnectivityService()),
+        ChangeNotifierProvider(create: (_) => MqttService()),
+        Provider(create: (_) => EventsRepository(Supabase.instance.client)),
       ],
       child: MaterialApp(
         title: 'Волонтерські івенти Львова',
@@ -56,8 +64,9 @@ class VolunteerEventApp extends StatelessWidget {
           secondaryHeaderColor: const Color(0xFFFF7043), // Помаранчевий
           focusColor: const Color(0xFF42A5F5), // Синій
         ),
-        initialRoute: '/login',
+        initialRoute: '/splash',
         routes: {
+          '/splash': (context) => const SplashScreen(),
           '/login': (context) => const LoginScreen(),
           '/register': (context) => const RegisterScreen(),
           '/main': (context) => const MainScreen(),
@@ -66,6 +75,7 @@ class VolunteerEventApp extends StatelessWidget {
           '/profile-edit': (context) => const ProfileEditScreen(),
           '/privacy': (context) => const PrivacyScreen(),
           '/help': (context) => const HelpScreen(),
+          '/mqtt': (context) => const MqttScreen(),
         },
         debugShowCheckedModeBanner: false,
       ),
