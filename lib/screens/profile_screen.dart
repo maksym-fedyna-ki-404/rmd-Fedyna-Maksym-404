@@ -558,14 +558,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
           .eq('id', user.id);
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        final messenger = ScaffoldMessenger.maybeOf(context);
+        messenger?.showSnackBar(
           const SnackBar(content: Text('Фото профілю оновлено!'), backgroundColor: Color(0xFF2E7D32)),
         );
         _loadProfile();
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        final messenger = ScaffoldMessenger.maybeOf(context);
+        messenger?.showSnackBar(
           SnackBar(content: Text('Помилка: $e'), backgroundColor: Colors.red),
         );
       }
