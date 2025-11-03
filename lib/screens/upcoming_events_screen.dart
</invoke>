@@ -1,0 +1,410 @@
+import 'package:flutter/material.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import '../models/event.dart';
+import '../widgets/widgets.dart';
+
+class UpcomingEventsScreen extends StatefulWidget {
+  const UpcomingEventsScreen({super.key});
+
+  @override
+  State<UpcomingEventsScreen> createState() => _UpcomingEventsScreenState();
+}
+
+class _UpcomingEventsScreenState extends State<UpcomingEventsScreen> {
+  // Брендові кольори
+  static const Color primary = Color(0xFF2E7D32);
+  static const Color secondary = Color(0xFFFF7043);
+  static const Color accent = Color(0xFF42A5F5);
+
+  // Мокові дані майбутніх івентів
+  final List<Event> upcomingEvents = [
+    Event(
+      id: '1',
+      title: 'Прибирання парку Шевченка',
+      description: 'Допоможемо прибрати парк та зробити його чистішим для всіх львів\'ян',
+      startDate: DateTime.now().add(const Duration(days: 2, hours: 10)),
+      endDate: DateTime.now().add(const Duration(days: 2, hours: 14)),
+      location: 'Парк ім. Т.Г. Шевченка, Львів',
+      category: 'Екологія',
+      maxParticipants: 50,
+      currentParticipants: 23,
+      status: EventStatus.upcoming,
+      requirements: ['Робочі рукавички', 'Добрий настрій'],
+      organizer: 'Еко-Львів',
+      contactInfo: '+380 67 123 4567',
+      latitude: 49.8397,
+      longitude: 24.0297,
+    ),
+    Event(
+      id: '2',
+      title: 'Допомога притулку для тварин',
+      description: 'Потрібна допомога з годуванням та доглядом за безпритульними тваринами',
+      startDate: DateTime.now().add(const Duration(days: 5, hours: 14)),
+      endDate: DateTime.now().add(const Duration(days: 5, hours: 18)),
+      location: 'Притулок "Друзі тварин", Львів',
+      category: 'Тварини',
+      maxParticipants: 20,
+      currentParticipants: 15,
+      status: EventStatus.upcoming,
+      requirements: ['Любов до тварин', 'Вільний час'],
+      organizer: 'Притулок "Друзі тварин"',
+      contactInfo: '+380 67 234 5678',
+      latitude: 49.8300,
+      longitude: 24.0100,
+    ),
+    Event(
+      id: '3',
+      title: 'Роздача їжі бездомним',
+      description: 'Допоможемо роздати гарячу їжу тим, хто цього найбільше потребує',
+      startDate: DateTime.now().add(const Duration(days: 7, hours: 12)),
+      endDate: DateTime.now().add(const Duration(days: 7, hours: 16)),
+      location: 'Центр міста, Львів',
+      category: 'Соціальна допомога',
+      maxParticipants: 30,
+      currentParticipants: 8,
+      status: EventStatus.upcoming,
+      requirements: ['Співчуття', 'Готовність допомогти'],
+      organizer: 'Львівська благодійність',
+      contactInfo: '+380 67 345 6789',
+      latitude: 49.8500,
+      longitude: 24.0300,
+    ),
+    Event(
+      id: '4',
+      title: 'Навчання дітей англійської',
+      description: 'Допоможемо дітям з вивченням англійської мови у неформальній атмосфері',
+      startDate: DateTime.now().add(const Duration(days: 10, hours: 16)),
+      endDate: DateTime.now().add(const Duration(days: 10, hours: 18)),
+      location: 'Бібліотека ім. Франка, Львів',
+      category: 'Освіта',
+      maxParticipants: 15,
+      currentParticipants: 12,
+      status: EventStatus.upcoming,
+      requirements: ['Знання англійської', 'Терпіння до дітей'],
+      organizer: 'Освітній центр',
+      contactInfo: '+380 67 456 7890',
+      latitude: 49.8400,
+      longitude: 24.0200,
+    ),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFFAFAFA),
+      body: SafeArea(
+        child: Column(
+          children: [
+            // Заголовок
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [primary, const Color(0xFF388E3C)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    FontAwesomeIcons.clock,
+                    color: Colors.white,
+                    size: 28,
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    'Майбутні події',
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const Spacer(),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      '${upcomingEvents.length} івентів',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // Список івентів
+            Expanded(
+              child: ListView.builder(
+                padding: const EdgeInsets.all(16),
+                itemCount: upcomingEvents.length,
+                itemBuilder: (context, index) {
+                  final event = upcomingEvents[index];
+                  return _buildEventCard(event);
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEventCard(Event event) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: primary.withOpacity(0.1),
+            spreadRadius: 1,
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+        border: Border.all(
+          color: primary.withOpacity(0.1),
+          width: 1,
+        ),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () {
+            // TODO: Навігація до деталей івенту
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Відкриваємо ${event.title}'),
+                backgroundColor: primary,
+              ),
+            );
+          },
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Заголовок з категорією
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        event.title,
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: primary,
+                        ),
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: accent.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        event.category,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: accent,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                
+                // Опис
+                Text(
+                  event.description,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey[700],
+                    height: 1.4,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 16),
+                
+                // Час до початку
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: secondary.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        FontAwesomeIcons.clock,
+                        size: 16,
+                        color: secondary,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'До початку: ${event.formattedTimeUntilStart}',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: secondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+                
+                // Дата та час
+                Row(
+                  children: [
+                    Icon(
+                      FontAwesomeIcons.calendar,
+                      size: 16,
+                      color: Colors.grey[600],
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      '${event.startDate.day}.${event.startDate.month}.${event.startDate.year}',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.grey[800],
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Icon(
+                      FontAwesomeIcons.clock,
+                      size: 16,
+                      color: Colors.grey[600],
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      '${event.startDate.hour.toString().padLeft(2, '0')}:${event.startDate.minute.toString().padLeft(2, '0')} - ${event.endDate.hour.toString().padLeft(2, '0')}:${event.endDate.minute.toString().padLeft(2, '0')}',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.grey[800],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                
+                // Локація
+                Row(
+                  children: [
+                    Icon(
+                      FontAwesomeIcons.locationDot,
+                      size: 16,
+                      color: Colors.grey[600],
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        event.location,
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.grey[800],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                
+                // Прогрес заповненості
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'Учасники',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey[600],
+                                ),
+                              ),
+                              Text(
+                                '${event.currentParticipants}/${event.maxParticipants}',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: primary,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          LinearProgressIndicator(
+                            value: event.fillLevel,
+                            backgroundColor: Colors.grey[200],
+                            valueColor: AlwaysStoppedAnimation<Color>(primary),
+                            minHeight: 6,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    ElevatedButton(
+                      onPressed: event.hasAvailableSpots ? () {
+                        // TODO: Зареєструватися на івент
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Реєструємося на ${event.title}'),
+                            backgroundColor: primary,
+                          ),
+                        );
+                      } : null,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: primary,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      child: Text(
+                        event.hasAvailableSpots ? 'Зареєструватися' : 'Повний',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}

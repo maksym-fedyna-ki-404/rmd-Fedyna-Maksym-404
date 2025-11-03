@@ -1,0 +1,20 @@
+{
+  "name": "volunteer-event",
+  "version": "1.0.0",
+  "description": "Volunteer Event Management App",
+  "main": "index.js",
+  "scripts": {
+    "db:generate": "prisma generate",
+    "db:push": "prisma db push",
+    "db:migrate": "prisma migrate dev",
+    "db:studio": "prisma studio",
+    "db:seed": "dart run scripts/seed.dart"
+  },
+  "devDependencies": {
+    "prisma": "^5.7.1",
+    "@prisma/client": "^5.7.1"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.7.1"
+  }
+}
